@@ -1,0 +1,30 @@
+# Multi-agent workflow scaffolding (not part of the project)
+genius_workflow.js
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+
+# Data (raw FITS / large downloads — keep out of git)
+data/
+*.fits
+*.fits.gz
+*.tar.gz
+
+# CHIANTI database
+chianti/
+CHIANTI*/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Secrets
+.env

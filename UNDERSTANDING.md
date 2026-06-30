@@ -1,6 +1,6 @@
 # The Genius Understanding — ISRO Aditya-L1 Solar Flare Problem
 
-> Distilled from a ~100-agent thinking-framework gauntlet (95 lenses: first-principles, MECE, inversion, systems, 14 cross-domain analogies, 13 expert personas, info-theory, TRIZ, edge frameworks; 2.83M tokens, 62 min). This is the *understanding* layer — once you hold it, the solution is trivial. `PLAN.md` is the execution.
+> Distilled from a ~100-agent thinking-framework gauntlet, then **revised against 14 days of real Aditya-L1 data** (14 SoLEXS + 16 HEL1OS datasets, cross-referenced with GOES-18 catalog of 45,061 flares). See `ASSUMPTIONS.md` for the full empirical audit. `PLAN.md` is the execution.
 
 ---
 
@@ -12,24 +12,30 @@
 - SXR (SoLEXS) measures the **time-integrated** thermal response → the **effect**.
 - Therefore HXR onset **physically precedes** SXR peak by ~1–10 min in flares that follow the thick-target impulsive scenario — **observed in ~50–80% of M/X-class flares** (Veronig 2002 finds ~50%; arXiv:2404.02653 finds 82.5% with corr ≥0.95). No training, no model — **but report the conformance fraction, never claim universality.** (The "guarantee" is the *integral relation* `dSXR/dt ∝ HXR` when thick-target dominates; gradual/conduction-dominated flares deviate.)
 
+> **DATA REVISION (Jun 2026):** Measured peak-to-peak delays on real Aditya-L1 data: X4.4=+3.2min, X6.9=+0.03min, X8.8=**-0.7min** (SXR peaked first), X1.0=+2.1min. Very impulsive X-class flares can have near-zero or inverted peak-to-peak delays. The real lead comes from **onset-to-GOES-peak** (6-13 min) and **class prediction via running integral**, not peak-to-peak Neupert delay.
+
 **Consequence:** "Forecasting" collapses from *"predict an uncertain future event"* to *"detect an ongoing causal chain and read its integral against known thresholds."*
 
-- **Lead time is a measurement, not a model output.** `lead = T_SXR_peak − T_HXR_onset` is set by thick-target electron precipitation + coronal-loop conduction. A better algorithm cannot increase it; a worse one cannot zero it. The only competitive question is: *are you measuring from the right start (HXR onset) to the right end (SXR peak)?*
+- **Lead time is a measurement, not a model output.** `lead = T_SXR_peak − T_HXR_onset` is set by thick-target electron precipitation + coronal-loop conduction. The only competitive question is: *are you measuring from the right start (HXR onset) to the right end (SXR peak)?*
 - **The running integral `∫HXR(t')dt'` deterministically predicts the eventual SXR peak class — before the SXR peaks** — because that integral *is* the energy banked into the plasma that will produce the SXR maximum.
+
+> **DATA REVISION:** Additionally, higher-energy HXR bands peak EARLIER than lower-energy bands. On the X8.8 flare: CZT 40-60 keV peaked at 12:15:25, CdTe 5-20 keV peaked at 12:17:43 — a **2.3 min advantage** from using the harder band as trigger. Use CZT 40+ keV as primary trigger, not CdTe 5-20 keV.
 
 > Every team building an SXR-only predictive model is solving a strictly **harder, less accurate** version of a problem physics already solved in 1968.
 
 ---
 
-## 2. The Single Architectural Error Everyone Else Will Make
+## 2. Architectural Principle: Preserve the Causal Asymmetry
 
-**Symmetric fusion of HXR + SXR as co-equal inputs to one synchronous feature vector.**
+**Symmetric fusion of HXR + SXR as co-equal inputs to one synchronous feature vector is wrong.**
 
-Concatenating HEL1OS and SoLEXS at the same timestamp puts **cause and effect in the same vector** → the model learns a trivial synchronous correlation, and the "lead time" it reports is just *the look-back window length*, not a physical measurement. This collapses the Neupert lag to zero.
+Concatenating HEL1OS and SoLEXS at the same timestamp puts **cause and effect in the same vector** → the model learns a trivial synchronous correlation, and the "lead time" it reports is just *the look-back window length*, not a physical measurement.
 
-**The dual payload is a causal differential pair, not a symmetric fusion.** Preserve the temporal asymmetry and you win; erase it and you produce zero real lead time regardless of the number you print.
+**The dual payload is a causal differential pair, not a symmetric fusion.** Preserve the temporal asymmetry.
 
 > Correct architecture is strictly **sequential**: HEL1OS onset *triggers* → Neupert integral *evolves forward* → SoLEXS SXR peak *arrives later and is the target*.
+
+> **DATA REVISION:** This is a correct design principle, but it's not a "secret insight everyone else will miss" — any team that understands HXR precedes SXR will naturally do this. The actual competitive edges are: (1) multi-band trigger hierarchy (CZT 40+ keV fires 2 min before CdTe 5-20 keV), (2) empirically-calibrated thresholds on real Aditya-L1 data, (3) honest per-class evaluation.
 
 ---
 
@@ -39,29 +45,33 @@ They **cannot share one pipeline** without sacrificing a judging criterion. The 
 
 | # | Sub-problem | Physics | Instrument | Method |
 |---|---|---|---|---|
-| **1** | Detect **A/B/C** flares GOES misses | Flux buried in noise, but plasma **T rises to 10–15 MK** (HOPE phase) before any flux threshold | **SoLEXS only** (HEL1OS photon-starved below ~C6) | CHIANTI T(t)/EM(t) spectral fit → temperature-transition detection |
-| **2** | **Forecast M/X** with max lead | Neupert: HXR onset precedes SXR peak | **HEL1OS-triggered** | CUSUM on Neupert residual `r(t)=HXR−α·dSXR/dt`; `∫HXR dt` → class |
+| **1** | Detect **A/B/C** flares GOES misses | Flux buried in noise, but plasma **T rises to 10–15 MK** (HOPE phase) before any flux threshold | **SoLEXS SDD2 only** (SDD1 dead; HEL1OS photon-starved below ~C6) | CHIANTI T(t)/EM(t) spectral fit → temperature-transition detection |
+| **2** | **Forecast M/X** with max lead | Neupert: HXR onset precedes SXR peak | **HEL1OS-triggered (CZT 40+ keV primary, CdTe secondary)** | CUSUM on Neupert residual; `∫HXR dt` → class; CZT fires ~2 min before CdTe |
 | **3** | Suppress **false alarms** without losing TPR | Real flares fire both instruments; noise fires one | **Both (coincidence)** | Physics AND-gate: SoLEXS candidate ≥C requires HEL1OS ≥2σ within ±30 s |
 
-**Handoff at ~C6** (HEL1OS CdTe SNR threshold). Low-class → SoLEXS spectral path. High-class → HEL1OS Neupert path. **Any unified model optimizing a blended metric sacrifices criterion #1 (low-class) — exactly what every competitor does.**
+**Handoff at ~C6** (HEL1OS CdTe SNR threshold — confirmed: HEL1OS median=0 cps on quiet days, C-class gives ~300 cps, M-class gives 4000+ cps). Low-class → SoLEXS SDD2 spectral path. High-class → HEL1OS Neupert path.
+
+> **DATA REVISION:** SDD1 is dead across all tested dates (Sep 2024 — Jun 2026). Low-class detection that assumed SDD1 must be redesigned for SDD2 (67x smaller area). Additionally, HEL1OS background is essentially zero (not 0.15 cps as assumed), so even small count excesses are statistically significant.
 
 ---
 
 ## 4. The Trivial Solution — 4-Layer Sequential Pipeline (1 s cadence, causally clean)
 
-**Layer 0 — Neupert Residual Streaming (zero training):**
-- Fit `α` once from 3–5 archived M-class events: linear regression of `HEL1OS_CdTe_8-70keV` vs `forward_diff(SoLEXS_BandA_2-8keV)`.
+**Layer 0 — Multi-Band Trigger + Neupert Residual Streaming (zero training):**
+- **Primary trigger: CZT 40+ keV CUSUM** — peaks ~2.5 min before CdTe 5-20 keV (confirmed on X8.8). Zero background = any sustained counts are significant.
+- **Secondary trigger: CdTe 5-20 keV CUSUM** — higher count rate, confirms CZT, handles weaker flares.
+- Fit `α` once from 3–5 archived M-class events: linear regression of `HEL1OS_CdTe_8-70keV` vs `forward_diff(SoLEXS_SDD2)`.
 - Every second: `r(t) = HEL1OS(t) − α·(SoLEXS(t) − SoLEXS(t−1))`.
-- CUSUM on `r(t)`: `k=0.5σ_quiet`, alarm `h=3σ`, require 5 consecutive samples → fires **2–8 min before SXR peak**, cannot fire late (physics).
-- Maintain `running_sum = ∫HXR dt` from alarm → compare to calibrated C/M/X thresholds = **class forecast before the SXR peaks**. *(~25 lines of numpy.)*
+- CUSUM on `r(t)`: `k=0.5σ_quiet`, alarm `h=3σ`, require 5 consecutive samples → fires **6–13 min before GOES SXR peak** (onset-based, not peak-based).
+- Maintain `running_sum = ∫HXR dt` from alarm → compare to calibrated C/M/X thresholds = **class forecast before the SXR peaks**.
 
 **Layer 1 — HOPE Thermal Precursor (SoLEXS only):**
 - Isothermal CHIANTI fit on **3-second co-added** PHA spectra (1 s too noisy for C-class).
 - Fire **WATCH** when `T > 8 MK` while EM still at background, sustained ≥3 bins. *The only mechanism that gives lead time on A/B/C-class.*
 
 **Layer 2 — Bifurcated Nowcast:**
-- Low-class (<C6): XSM-proven **EMG/FRED matched-filter bank** on SoLEXS SDD1, `τ_rise ∈ {30,60,120,300}s`, rolling low-percentile background. ⚠️ **Single-band (2–6 keV) for sub-A/A** — 5–8 MK plasma emits negligibly above 6 keV, so dual-band confirmation would *reject* the very faint events we target; require dual-band concordance only for **C-class+**.
-- High-class (C6+): HEL1OS CUSUM + Neupert integrator + SoLEXS **SDD2** classification.
+- Low-class (<C6): **EMG/FRED matched-filter bank on SoLEXS SDD2** (SDD1 is dead), `τ_rise ∈ {30,60,120,300}s`, rolling low-percentile background. Single-band (2–6 keV) for sub-A/A; dual-band concordance only for C-class+.
+- High-class (C6+): HEL1OS CZT+CdTe CUSUM + Neupert integrator + SoLEXS SDD2 classification.
 
 **Layer 3 — AND-Gate FAR Suppression + Tiered Alerts:**
 - `WATCH` = `r(t)` CUSUM **or** HOPE T-rise → `WARNING` = WATCH **+** HEL1OS ±30 s ≥2σ → `ALERT` = WARNING **+** SoLEXS dual-band concordance.
@@ -73,7 +83,7 @@ They **cannot share one pipeline** without sacrificing a judging criterion. The 
 
 ## 5. Killer Insights (the deep truths that recurred across lenses)
 
-1. **Anchor to the right timestamps = free 2–10 min lead.** Use HXR onset as alarm time and **GOES SXR peak** (not GOES onset, which lags true onset 2–10 min) as the target. This *definitional fix alone*, no algorithm change, moves reported lead from ~2 min to ~8–12 min on the same events.
+1. **Anchor to the right timestamps = free 6–13 min lead.** Use HXR onset as alarm time and **GOES SXR peak** (not GOES onset, which lags true onset 2–10 min) as the target. Measured on real data: HXR 5σ onset fires 6.7-13.1 min before GOES SXR peak. **Additionally, use CZT 40+ keV (not CdTe 5-20 keV) for ~2 min extra lead.**
 2. **Symmetric HXR+SXR fusion is the root architectural error** (see §2).
 3. **Low/high class are separate problems** needing a bifurcated pipeline with a C6 handoff (see §3).
 4. **Background estimation is load-bearing.** Rolling *mean* self-contaminates with pre-flare heating → raises the threshold exactly when it should be lowest. Use **5th–10th percentile rolling quantile (≥60 min window)** — provably immune to positive-outlier contamination.
@@ -87,8 +97,8 @@ They **cannot share one pipeline** without sacrificing a judging criterion. The 
 
 | Edge | Effort | Why it wins |
 |---|---|---|
-| **Neupert residual `r(t)` CUSUM** as primary M/X trigger | low | Fires by physics law, zero training, causally unimpeachable; lead time = direct measurement. ~25 lines. |
-| **Split-screen counterfactual demo** (SXR-only vs combined) + live Neupert cross-correlation panel | low | Judges *see* the N-min lead-time gain from HEL1OS in 10 s. Most memorable artifact, ~30 lines Streamlit. |
+| **CZT 40+ keV primary trigger + CdTe secondary + Neupert residual CUSUM** | low | CZT peaks ~2.5 min before CdTe (confirmed). Multi-band hierarchy = maximum lead. Zero training. |
+| **Split-screen counterfactual demo** on X8.8 (Oct 3 2024) or X4.4 (Sep 14 2024) | low | Judges *see* the N-min lead-time gain from HEL1OS in 10 s. Use 2024 events (clean data, both instruments). |
 | **Dual-instrument AND-gate** coincidence | low | FAR ~20% → ~0.04% (independent noise product). Report "false alerts/day" — the uncontested scoring dimension. |
 | **Three-state labels + per-class survival curves** | med | Fixes the 3 label bugs that collapse everyone's lead time to ~0; the eval framework physicists recognize as correct. |
 | **HOPE T/EM precursor + T–EM trajectory demo** | med | Turns low-class detection from "find amplitude in noise" into "detect a temperature transition." The T–EM diagram is what ISRO scientists read daily. |
@@ -111,13 +121,15 @@ These are **honest unknowns** that can break the design. Each has a concrete che
 | # | Open question | Check | If bad → |
 |---|---|---|---|
 | 1 | **PRADAN L1 delivery latency?** | Compare newest SoLEXS L1 `TSTART` header vs current UTC | >5 min → reframe demo as replay / "near-real-time" |
-| 2 | **Is SDD1 actually operating** in the Jul-2024+ window? | Download one quiet-Sun SDD1 light curve; check 50–200 cps nominal | minimal-op → low-class shifts to SDD2 at degraded SNR; frame A-class claim honestly |
-| 3 | **Can HEL1OS CdTe detect B-class?** | Analytically compute expected 8–20 keV cps for B1 (CHIANTI T~8 MK, EM) vs 0.15 cps background at 2σ/60 s | below background → push AND-gate handoff up to C2–C3, not C6 |
-| 4 | **CHIANTI fit fast enough at cadence?** | Benchmark sunkit-spex+CHIANTI on one 340-ch spectrum | >100 ms → pre-compute emissivity tables (T∈[6,30]MK, 0.1MK); else 3 s co-add |
-| 5 | **Neupert conformance in SC25?** | Plot HEL1OS vs SoLEXS for first 10–15 M-class events; measure `T_HXR_peak − T_SXR_peak` | <60% conform → more events routed to HOPE-only path; report conformance as a stated limit |
-| 6 | **SoLEXS SDD2 effective area at 15/20/25 keV?** | Read ARF from arXiv:2509.26292 / SoLEXS_Tools | <5% peak at 20 keV → restrict overlap band to 8–15 keV |
-| 7 | **ASPEX/STEPS on PRADAN?** | Browse PRADAN for Aditya-L1/ASPEX L1 | available → use as primary SEP flag (same bus, zero timing offset) |
-| 8 | **Training-set size honesty** | Count M (≈150–400) / X (≈30–60) events in window | small test set → report **bootstrap 95% CI** on every TSS + survival curve |
+| 2 | ~~Is SDD1 actually operating?~~ | **RESOLVED: SDD1 is DEAD.** Zero GTI, no LC, no PI across all 14 tested days (Sep 2024 — Jun 2026). | **Pipeline is SDD2-only. No dual-aperture stitching.** |
+| 3 | ~~Can HEL1OS CdTe detect B-class?~~ | **RESOLVED: HEL1OS background is ~0 cps** (not 0.15). Even small counts are significant. C-class gives ~300 cps, M-class 4000+ cps. | Handoff at C-class works. Count-based threshold, not class-based. |
+| 4 | **CHIANTI fit fast enough at cadence?** | Still needs benchmarking | >100 ms → pre-compute emissivity tables; else 10–30 s co-add |
+| 5 | ~~Neupert conformance in SC25?~~ | **PARTIALLY RESOLVED:** Peak-to-peak delays measured: X4.4=+3.2min, X6.9=+0.03min, X8.8=-0.7min, X1.0=+2.1min. Very impulsive flares have near-zero delay. | Use onset-based lead, not peak-based. Report conformance fraction. |
+| 6 | **SoLEXS SDD2 effective area at 15/20/25 keV?** | Still needs ARF check | Restrict overlap band if needed |
+| 7 | **ASPEX/STEPS on PRADAN?** | Available on portal but not downloaded | Use if time permits |
+| 8 | ~~Training-set size~~ | **RESOLVED:** GOES-18 catalog has 49 X-class + 958 M-class in Aditya-L1 window (Jul 2024+). Enough for validation but bootstrap CI still needed. | Report bootstrap 95% CI on all metrics |
+| 9 | **2026 data has ~50% gaps** | Feb 2026 SoLEXS has 47-48% NaN. 2024 data is clean. | **Use 2024 events for primary validation. Handle gaps in pipeline.** |
+| 10 | **HEL1OS is 12-hour chunks** | Must stitch 2 halves per day. Different from daily SoLEXS. | Time alignment between halves needed. |
 
 ---
 

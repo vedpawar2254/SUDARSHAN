@@ -9,9 +9,11 @@
 
 ## 0. Winning Thesis (physics-first)
 
-**Don't predict flares — measure the Neupert delay between the two payloads.** HEL1OS sees the *cause* (instantaneous electron energy deposition), SoLEXS sees the *effect* (time-integrated thermal plasma). In the flares where the Neupert relation holds, HXR onset precedes the SXR peak by minutes — **that delay is the lead time, a measurement, not a model output.** Build a **bifurcated, strictly-sequential** pipeline (SoLEXS-spectral for low-class; HEL1OS-Neupert for high-class), prove it live with a **split-screen counterfactual demo**, and back every number with **chronologically-validated, per-class metrics** an ISRO physicist can audit on the spot.
+**Don't predict flares — measure the causal chain between the two payloads.** HEL1OS sees the *cause* (instantaneous electron energy deposition), SoLEXS sees the *effect* (time-integrated thermal plasma). HXR onset precedes the SXR peak by minutes — **that onset-to-peak gap is the lead time.** Build a **bifurcated, strictly-sequential** pipeline (SoLEXS SDD2-spectral for low-class; HEL1OS CZT+CdTe multi-band for high-class), prove it live with a **split-screen counterfactual demo** on real Oct 2024 events, and back every number with **chronologically-validated, per-class metrics**.
 
-The differentiator is **rigor + real dual-payload physics**, not a model. Most teams will concatenate HXR+SXR into one LSTM — which collapses the causal lag that *is* the lead time. Zero-training physics beats them on all three criteria.
+The differentiator is **rigor + real dual-payload physics + empirically-calibrated thresholds on actual Aditya-L1 data**, not a model. The multi-band trigger hierarchy (CZT 40+ keV fires ~2.5 min before CdTe 5-20 keV) is a measurable advantage no SXR-only pipeline can match.
+
+> **Revised from data:** Peak-to-peak Neupert delay can be near-zero for impulsive X-class (measured: X6.9=+0.03min, X8.8=-0.7min). Real lead comes from onset-based timing (6-13 min measured) + class prediction via running integral. SDD1 is dead — entire pipeline uses SDD2 only. See `ASSUMPTIONS.md`.
 
 ---
 
@@ -29,14 +31,18 @@ The differentiator is **rigor + real dual-payload physics**, not a model. Most t
 - Energy **2–22 keV**; resolution **~170 eV @ 5.9 keV** (164.9–171.2).
 - **1 s spectra** cadence ✅. (0.1 s temporal light curve ⚠️ unverified — confirm in SoLEXS_Tools manual.)
 - **Dual aperture:** SDD1 = **7.1063 mm²** (quiet/A–C), SDD2 = **0.1065 mm²** (M–X). SDD1 saturates **>~1×10⁵ cps**.
-- **Two processing chains with different deadtimes** (critical): **timing chain = 1.6 µs** (used for *light curves* — flare detection), **spectral chain = 13.65 µs** (used for *PHA spectra* — T/EM). **CSPA ~364 cps background applies to the timing chain only.**
-- Caught X2.9 within 33 h of commissioning (SOL2023-12-14; **SDD2 was operative, SDD1 saturated** — the dual-aperture design working as intended). **100% duty cycle** at L1 since 2024-01-06.
-- ⚠️ SDD1 full characterization was still pending as of the paper (Sep 2025) — **verify SDD1 is in nominal operation in the Jul–Dec 2024 window** (Day-1 check).
+- **SDD1 STATUS: DEAD.** Zero GTI intervals, no light curve, no spectra across ALL 14 tested days (Sep 2024 — Jun 2026). **Pipeline must use SDD2 only.** No dual-aperture stitching possible.
+- **Two processing chains with different deadtimes** (critical): **timing chain = 1.6 µs** (used for *light curves* — flare detection), **spectral chain = 13.65 µs** (used for *PHA spectra* — T/EM).
+- **Coverage:** 2024 data has ~100% coverage. Feb 2026 has systematic ~50% NaN gaps (47-48%). Use 2024 events for primary validation.
 
 **HEL1OS — hard X-ray (non-thermal electrons)** ✅ arXiv:2512.12679 (Solar Physics, DOI 10.1007/s11207-025-02543-8):
 - **CdTe 8–70 keV / 0.5 cm²**; **CZT 20–150 keV / 32 cm²** (CZT has **64× the area** — use it for the hard band).
-- Statistically-significant spectra **C6–X3**; benign particle background at L1. **1 s light curves** ✅.
-- ⚠️ 10 ms event-list + 20 s PHA cadence: behind paywall — **verify before citing**. ⚠️ URSC page lists CdTe as 10–40 keV vs paper's 8–70 keV; cite the paper, be ready to reconcile.
+- Statistically-significant spectra **C6–X3**; benign particle background at L1. **1 s light curves** ✅. **10 ms event-list + 20 s PHA cadence confirmed** from user manual.
+- **5 energy bands per CdTe detector:** 5-20, 20-30, 30-40, 40-60, 1.8-90 keV. **5 bands per CZT:** 20-40, 40-60, 60-80, 80-150, 18-160 keV.
+- **DATA FINDING: Higher energy bands peak EARLIER.** On X8.8: CZT 40-60 keV peaked at 12:15:25, CdTe 5-20 keV peaked at 12:17:43 — **2.3 min advantage from harder bands.** Use CZT 40+ keV as primary trigger.
+- **DATA FINDING: Quiet-sun background is ~0 cps** (not 0.15 cps as theorized). Even a few sustained counts are statistically significant.
+- **DATA FINDING: 12-hour data chunks**, not daily. Must stitch halves. File size correlates with activity (40 MB quiet, 200-500 MB flare).
+- Columns: `MJD`, `ISOT`, `CTR` (count rate), `STAT_ERR`.
 
 **Combined 2–150 keV continuously — no prior Indian solar instrument did this. That span is the core novelty.**
 
@@ -48,12 +54,16 @@ The differentiator is **rigor + real dual-payload physics**, not a model. Most t
 `dSXR/dt ∝ HXR(t)` → the HXR peak precedes the SXR peak. ✅ arXiv:2404.02653 (ASO-S, 149 flares): 82.5% show corr ≥0.95.
 **⚠️ NOT "physics-guaranteed":** the timing relation holds in **~50–80% of M/X flares** (Veronig 2002 finds ~50%; ~25% inconsistent). **Flag each event `neupert_conformant` (|corr(∫HXR, SXR)|>0.90) and report the conformance fraction as a result.** Gradual/conduction-dominated flares deviate.
 
-### Flare timeline (two distinct lead-time mechanisms — do not conflate)
+### Flare timeline (three distinct lead-time mechanisms)
 | Stage | Observable | Instrument | Lead vs SXR peak |
 |---|---|---|---|
-| **HOPE** thermal precursor | T rises to **10–15 MK**, EM rising, no HXR | SoLEXS spectral fit | **C5–M1: 3.46±2.26 / M1–X1: 5.39±3.86 / X1+: 9.38±4.49 min** ✅ arXiv:2509.05234; or **13.4±6.0 min (range 6–27)** for C1.2–M3.8 ✅ arXiv:2407.04567 — *two different studies, cite separately* |
-| **HXR peak** (Neupert timing gap) | Non-thermal bremsstrahlung | HEL1OS | **~1–3 min (M); ~3–5 min (X)** |
+| **HOPE** thermal precursor | T rises to **10–15 MK**, EM rising, no HXR | SoLEXS spectral fit | **C5–M1: 3.46±2.26 / M1–X1: 5.39±3.86 / X1+: 9.38±4.49 min** ✅ arXiv:2509.05234 |
+| **CZT 40+ keV onset** | Non-thermal hard X-rays | HEL1OS CZT | **~2.5 min before CdTe 5-20 keV peak** (measured on X8.8) |
+| **HXR onset** (5σ above baseline) | Non-thermal bremsstrahlung | HEL1OS CdTe | **6–13 min before GOES SXR peak** (measured onset-to-peak) |
+| **HXR peak** (Neupert timing gap) | Peak non-thermal emission | HEL1OS | **~0–3 min before SXR peak** (REVISED: can be near-zero for impulsive X-class) |
 | **SXR peak** | Thermal max → defines GOES class | SoLEXS | t = 0 (scored endpoint) |
+
+> **DATA REVISION:** Prior assumption of "~1-3 min (M), ~3-5 min (X)" peak-to-peak delay is WRONG for impulsive events. Measured: X6.9=+0.03min, X8.8=-0.7min. Real lead comes from onset-to-peak timing + CZT multi-band advantage.
 
 ### Honest per-class lead-time caveat (say this — it builds credibility)
 - **X/M-class:** HOPE 5–10 min + Neupert 1–5 min → real, defensible multi-minute lead.
@@ -61,33 +71,38 @@ The differentiator is **rigor + real dual-payload physics**, not a model. Most t
 - **Anchor correctly:** alarm = HXR/HOPE onset; target = **GOES SXR peak**, *not* GOES catalogue onset (which lags true onset 2–10 min). This definitional fix alone buys minutes of *real* lead.
 
 ### Three physically-separate sub-problems (the bifurcation is the game)
-1. **Detect A/B/C GOES misses** → SoLEXS T(t)/EM(t) spectral fit (HEL1OS photon-starved below ~C6; fusing it adds noise).
-2. **Forecast M/X with max lead** → HEL1OS-triggered Neupert residual + `∫HXR dt` class forecast.
+1. **Detect A/B/C GOES misses** → SoLEXS SDD2 T(t)/EM(t) spectral fit (SDD1 dead; HEL1OS photon-starved below ~C6).
+2. **Forecast M/X with max lead** → HEL1OS CZT 40+ keV primary trigger (fires ~2.5 min before CdTe) + CdTe confirmation + Neupert residual + `∫HXR dt` class forecast.
 3. **Suppress false alarms** → physics AND-gate coincidence.
-**Handoff at ~C6.** Any unified model on a blended metric sacrifices #1 — what every competitor does.
+**Handoff at ~C6.** HEL1OS background is ~0 cps; C-class gives ~300 cps, M-class 4000+ cps.
 
 ---
 
 ## 4. System Architecture — 4-Layer Sequential Pipeline (never symmetric fusion)
 
 ```
-ingest.py        SoLEXS+HEL1OS FITS readers; dual-aperture selector; deadtime (1.6µs timing / 13.65µs spectral);
-                 CSPA 364cps (timing only); UTC align (+5s on Aditya ts to match GOES)
-lightcurve.py    SoLEXS Band A 2–6 keV, Band B 6–12 keV; HEL1OS CdTe 8–20/20–70, CZT 20–70;
-                 background = rolling 5th–10th percentile (≥60min) — NOT rolling mean (self-contaminates)
-nowcast_soft.py  EMG/FRED peak fit (Edge 1); single-band 2–6 keV for sub-A/A, dual-band only C+
-nowcast_hard.py  CZT/CdTe threshold + SEP veto (CZT 70–150/20–70 ratio)
-catalogue_merge.py  master catalogue + AND-gate FAR suppression (Edge 3); source_channel ∈ {soft,hard,both}
-hope_precursor.py   CHIANTI isothermal T/EM on 10–30s co-added spectra → WATCH (Edge 2)
-neupert_residual.py r(t)=HEL1OS_CdTe_8-70 − α·dSXR/dt; CUSUM → Stage-0 trigger; ∫HXR dt → class (Edge 1-physics)
-evaluate.py      TSS=TPR−FPR (define it!), per-class, bootstrap 95% CI, per-class survival curves
-ui/app.py        split-screen counterfactual replay + live Neupert cross-correlation (Edge 2-demo)
+ingest.py        SoLEXS SDD2 + HEL1OS FITS readers; 12-hour HEL1OS stitching;
+                 deadtime (1.6µs timing / 13.65µs spectral); NaN/gap handling;
+                 UTC align; MJD→datetime for HEL1OS, unix→datetime for SoLEXS
+lightcurve.py    SoLEXS SDD2 total counts; HEL1OS CdTe 5 bands + CZT 5 bands;
+                 background = rolling 5th–10th percentile (≥60min, skip NaN) — NOT rolling mean
+nowcast_soft.py  EMG/FRED peak fit on SDD2; single-band for sub-A/A, dual-band only C+
+nowcast_hard.py  Multi-band trigger: CZT 40+ keV primary (earliest), CdTe 5-20 keV secondary;
+                 SEP veto (CZT 80-150/20-40 ratio)
+catalogue_merge.py  master catalogue + AND-gate FAR suppression; source_channel ∈ {soft,hard,both}
+hope_precursor.py   CHIANTI isothermal T/EM on 10–30s co-added SDD2 spectra (340 ch) → WATCH
+neupert_residual.py r(t)=HEL1OS_CdTe − α·dSXR/dt; CUSUM → trigger; ∫HXR dt → class forecast
+evaluate.py      TSS=TPR−FPR, per-class, bootstrap 95% CI, per-class survival curves
+ui/app.py        split-screen counterfactual replay on Oct 2024 events
 ```
 
-**Layer 0 — Neupert residual streaming (zero training):** fit `α` once on 3–5 archived M flares (regress HEL1OS_CdTe_8-70keV vs forward-diff of SoLEXS Band A). Then `r(t)=HEL1OS(t)−α·(SoLEXS(t)−SoLEXS(t−1))`; CUSUM `k=0.5σ_quiet`, `h=3σ`, 5 consecutive samples. `∫HXR dt` from alarm → calibrated C/M/X thresholds.
-**Layer 1 — HOPE (SoLEXS only):** CHIANTI isothermal fit on **10–30 s co-added** spectra (1 s is noise-dominated: O(10–50) net cts/s → ±3–5 MK). WATCH when T>8 MK while EM at background, ≥3 bins.
-**Layer 2 — bifurcated nowcast:** low-class → EMG bank on SDD1; high-class (C6+) → HEL1OS CUSUM + integrator + SDD2.
-**Layer 3 — AND-gate + tiered alerts:** WATCH→WARNING(+HEL1OS ±30s ≥2σ)→ALERT(+SoLEXS dual-band concordance); K-of-N vote + 30-min refractory.
+**Layer 0 — Multi-band trigger + Neupert residual (zero training):**
+- **Primary: CZT 40+ keV CUSUM** — fires ~2.5 min before CdTe 5-20 keV (measured). Zero background = any sustained counts significant.
+- **Secondary: CdTe 5-20 keV CUSUM** — higher count rate, confirms CZT, handles weaker flares.
+- Neupert residual: fit `α` on archived M flares. `r(t)=HEL1OS(t)−α·(SoLEXS(t)−SoLEXS(t−1))`; CUSUM `k=0.5σ_quiet`, `h=3σ`, 5 consecutive. `∫HXR dt` → calibrated C/M/X class thresholds.
+**Layer 1 — HOPE (SoLEXS SDD2 only):** CHIANTI isothermal fit on **10–30 s co-added** SDD2 spectra (340 channels, quiet=~470 total counts/s, flare=17000+). WATCH when T>8 MK while EM at background, ≥3 bins.
+**Layer 2 — bifurcated nowcast:** low-class → EMG bank on **SDD2** (SDD1 dead); high-class (C6+) → HEL1OS multi-band CUSUM + integrator + SDD2.
+**Layer 3 — AND-gate + tiered alerts:** WATCH→WARNING(+HEL1OS ±30s ≥2σ)→ALERT(+SoLEXS concordance); K-of-N vote + 30-min refractory.
 
 ---
 
@@ -103,7 +118,12 @@ ui/app.py        split-screen counterfactual replay + live Neupert cross-correla
 - **Fermi GBM / Solar Orbiter STIX** — HEL1OS hard-X-ray analog during dev.
 - **AL1SC** `al1ssc.aries.res.in` — fast inspection; **Kaggle SoLEXS samples** + ISRO-ESA-Heliophysics-Workshop notebooks — offline bootstrap.
 
-**Demo events:** ⚠️ **NOT X6.3 2024-02-22 — it's in the non-public PV phase (Jan–Jun 2024).** Pick **2–3 confirmed M/X events from Jul–Dec 2024**, verify they download+parse before the event. PV data (incl. 2024-02-22 X6.3, 2024-05-10 X5.8) available on request to **sarwade@ursc.gov.in**.
+**Demo events (confirmed, data downloaded and verified):**
+- **X8.8 (Oct 3, 2024)** — best event. Both instruments, full coverage, 46,736 cps CdTe peak. HXR peak at 12:17:43, SXR peak at 12:17:03.
+- **X6.9 (Oct 1, 2024)** — clean data, 40,069 cps CdTe peak. Near-simultaneous HXR/SXR peaks (demonstrates impulsive case).
+- **X4.4 (Sep 14, 2024)** — cleanest Neupert delay: HXR peak 3.2 min before SXR peak (demonstrates the physics best).
+- **X2.4 (Apr 24, 2026)** — recent event, good coverage.
+- ⚠️ **X8.1 (Feb 1, 2026) is NOT usable** — flare at 23:57 UTC but we only have HEL1OS 00:00-12:00 half. SoLEXS has 48% NaN.
 
 **Ground-truth & cross-cal:** GOES/SWPC event list = labels. ⚠️ SoLEXS→GOES linear cross-cal valid only **2×10⁻⁶–1×10⁻⁴ W/m² (~C2–X1)** and is against **GOES XRS-A (0.5–4 Å)**, while class is defined in **XRS-B (1–8 Å)** — convert XRS-A→XRS-B via the CHIANTI fit. **Below C2, report SoLEXS native flux; class is extrapolated** (use XSM sub-C convention). ⚠️ GOES-8/15 underestimate flux 1.43× pre-2016 (not GOES-R 2017+) — SoLEXS spectral fits are *more accurate* labels at the tails (a provable claim).
 
@@ -114,7 +134,7 @@ ui/app.py        split-screen counterfactual replay + live Neupert cross-correla
 - **Background:** rolling **5th–10th percentile** quantile (≥60 min) — immune to pre-flare contamination; rolling *mean* raises the threshold exactly when it should be lowest.
 - **XSM-actual detection method** ✅ arXiv:2312.09191 (cite it correctly): 120 s mean-binning → Gaussian smoothing (σ_G=2) → dynamic threshold τ_FG=0.3·σ_BG → `scipy.signal.find_peaks` topographic prominence → **EMG (Elementary Flare Profile)** fit for start/peak/end → decompose overlaps. Analysis band 1.55–12.4 keV. **89.64% completeness for B1.0+ vs GOES.**
 - ⚠️ **Sub-A/A: single-band (2–6 keV)** detection — 5–8 MK plasma emits negligibly >6 keV, so dual-band would reject them. **Dual-band concordance only for C-class+.**
-- **Dual-aperture stitching:** SDD1 below ~1e5 cps, SDD2 above. ⚠️ SDD2 offset is **flux-dependent & bidirectional** (reads ~15% low at quiescence, high at peaks) — interpolate a calibration polynomial across the crossover, **not** a fixed +15%. The CHIANTI T/EM fit is the most robust GOES-flux proxy.
+- **No dual-aperture stitching:** SDD1 is dead. SDD2-only pipeline. SDD2 quiet-day baseline: median=15-25 cps. Active-day baseline: median=100-1000 cps. Dynamic range 8x (quiet) to 280x (flare day).
 - **Catalogue merge:** ±2 min association, `source_channel` flag.
 
 **The honest XSM claim (corrected):** XSM found **213 sub-A events genuinely below GOES sensitivity** (real new detections) + 1,330 A-class in its catalogue. ⚠️ Do **NOT** say "GOES missed 1,330 A-class" — with the same algorithm GOES-17 finds 1,851 A-class (*more*). Only the **213 sub-A** is a defensible "GOES can't see this" claim.
@@ -191,13 +211,13 @@ Streamlit, **split-screen counterfactual replay** on a real Jul–Dec 2024 M/X e
 | # | Unknown | Check | If bad → |
 |---|---|---|---|
 | 1 | PRADAN L1 delivery latency | newest SoLEXS L1 `TSTART` vs UTC | >5 min → reframe as replay/"near-real-time" |
-| 2 | SDD1 actually operating Jul–Dec 2024? | quiet-Sun SDD1 LC, expect 50–200 cps | minimal-op → low-class shifts to SDD2 at degraded SNR; state honestly |
-| 3 | HEL1OS CdTe detect B-class? | analytic 8–20 keV cps for B1 (CHIANTI T~8 MK) vs 0.15 cps bg | below bg → push AND-gate handoff to C2–C3 |
-| 4 | CHIANTI fit fast enough? | benchmark one spectrum | >100 ms → pre-compute emissivity tables; else 10–30 s co-add |
-| 5 | Neupert conformance in SC25? | plot HEL1OS vs SoLEXS, first 10–15 M events | <60% → more events to HOPE-only path; report fraction |
-| 6 | SoLEXS SDD2 efficiency >15 keV? | ARF from arXiv:2509.26292 / SoLEXS_Tools | <5% @20 keV → overlap band restricted to 8–15 keV |
-| 7 | ASPEX/STEPS on PRADAN? | browse portal | available → primary SEP flag (same bus) |
-| 8 | Training-set size | count M/X in window | small → bootstrap CI on all metrics |
+| 2 | ~~SDD1 operating?~~ | **RESOLVED: DEAD.** SDD2-only pipeline. | Done |
+| 3 | ~~HEL1OS detect B-class?~~ | **RESOLVED: bg=0 cps.** C-class=300 cps, M=4000+, X=15k-49k. | Count threshold works |
+| 4 | CHIANTI fit fast enough? | benchmark one 340-ch SDD2 spectrum | >100 ms → pre-compute emissivity tables |
+| 5 | ~~Neupert conformance?~~ | **PARTIALLY RESOLVED:** peak-to-peak delays 0-3 min, can be negative for impulsive. Onset-based = 6-13 min. | Use onset, report conformance |
+| 6 | SoLEXS SDD2 efficiency >15 keV? | check ARF | May restrict overlap band |
+| 7 | ASPEX/STEPS available? | On PRADAN, not downloaded | Use if time permits |
+| 8 | ~~Training-set size~~ | **RESOLVED: 49 X-class + 958 M-class in Aditya-L1 window** (GOES-18 catalog) | Bootstrap CI on all metrics |
 
 ---
 
@@ -205,19 +225,21 @@ Streamlit, **split-screen counterfactual replay** on a real Jul–Dec 2024 M/X e
 
 | Wrong assumption | Reality | Fix |
 |---|---|---|
+| SDD1 is operational | **DEAD across all 14 tested days** (Sep 2024 — Jun 2026). Zero GTI, no data. | SDD2-only pipeline. No dual-aperture stitching. |
+| Neupert delay = 2-10 min guaranteed | **Peak-to-peak can be ~0 or negative** for impulsive X-class (X6.9=+0.03min, X8.8=-0.7min) | Use onset-to-peak lead (6-13 min measured). Class prediction via integral. |
+| CdTe 5-20 keV is best trigger | **CZT 40+ keV peaks ~2.5 min earlier** than CdTe 5-20 keV (confirmed on X8.8) | CZT primary trigger, CdTe secondary. |
+| HEL1OS background is 0.15 cps | **Background is ~0 cps.** Median is 0 on all days. | Even a few sustained counts are significant. Count threshold, not class threshold. |
+| 100% duty cycle always | **Feb 2026 has 47-48% NaN gaps.** 2024 data is clean. | Handle gaps. Use 2024 events for primary validation. |
+| HEL1OS data is daily | **12-hour chunks.** Must stitch halves. | Time alignment between halves needed. |
+| X8.1 (Feb 1, 2026) is best demo | **Flare at 23:57 UTC, only have 00:00-12:00 HEL1OS half.** SoLEXS 48% NaN. | Use Oct 2024 events (X8.8, X6.9, X4.4) — clean, both instruments. |
+| "Most teams will fuse symmetrically" | This is obvious, not a hidden trap | Focus on real edges: multi-band trigger, empirical calibration, honest eval |
 | "GOES missed 1,330 A-class" | Inverted — GOES finds *more* (1,851) with same algo | Claim only the **213 sub-A** as genuine GOES-misses |
-| 5th-pct floor / dual-band>60s = "XSM method" | Fabricated; XSM uses 120s mean-bin + Gaussian σ=2 + τ=0.3σ_BG | Cite XSM's real method; single-band for sub-A |
-| Deadtime 13.65 µs on light curves | That's the spectral chain; **timing chain = 1.6 µs** | 1.6 µs for LCs, 13.65 µs for spectra |
 | Neupert "physics-guaranteed" | Holds ~50–80% of M/X | Report conformance fraction; flag per event |
 | TSS = TPR − FAR | **TSS = TPR − FPR** | Define formula in code |
 | One blended lead-time number | Class-dependent; <C1 ≈ 0 | Per-class survival curves |
-| Cross-instrument raw count ratio | Physically invalid; wrong detector | Flux-convert via ARF/RMF, use CZT, or intra-HEL1OS ratio |
-| GOES class for A-class SoLEXS | Cross-cal floor is C2; cal is vs XRS-A not XRS-B | Native flux <C2; convert XRS-A→B via CHIANTI |
 | 1 s CHIANTI fit | Noise-dominated at A/B/C | 10–30 s co-add |
-| PRADAN instant access | Mandatory admin approval | Register ≥48 h early; build on analogs |
 | filtfilt for smoothing | Zero-phase = future leakage | Use lfilter; document it |
 | CNN+LSTM as core edge | Scored 2.9/10; physics wins without it | Stretch goal only |
-| Demo event 2024-02-22 | PV phase, not public | Use Jul–Dec 2024 events |
 
 ---
 

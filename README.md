@@ -58,11 +58,12 @@ Layer 3  Both-sensors-agree gate ──► kills false alarms, tiered alerts
 | File | What it is |
 |---|---|
 | `ps.md` | The original ISRO problem statement |
-| `UNDERSTANDING.md` | **The "why"** — the core idea and winning angle, explained |
-| `PLAN.md` | **The "how"** — the full, fact-checked build plan + 30-hour roadmap |
+| `UNDERSTANDING.md` | **The "why"** — the core idea and winning angle, revised with real data findings |
+| `PLAN.md` | **The "how"** — the build plan, updated with empirical corrections |
+| `ASSUMPTIONS.md` | **The "what changed"** — every prior assumption tested against real Aditya-L1 data |
 | `README.md` | This file |
 
-> The plan and understanding were produced and adversarially fact-checked by a multi-agent research process (≈139 agents across 3 rounds: research → deep reasoning → 20-agent correctness audit, which caught and fixed 24 errors). Every scientific claim is cited to a real, verified paper.
+> Originally produced by multi-agent research (139 agents, 24 errors caught). Then **revised against 14 days of real Aditya-L1 data** (14 SoLEXS + 16 HEL1OS datasets + GOES-18 catalog of 45,061 flares). Key corrections: SDD1 is dead, Neupert peak delay can be ~0 for impulsive X-class, CZT 40+ keV peaks 2.5 min before CdTe 5-20 keV.
 
 ---
 
@@ -71,6 +72,9 @@ Layer 3  Both-sensors-agree gate ──► kills false alarms, tiered alerts
 - ✅ Problem deeply understood
 - ✅ Winning angle defined
 - ✅ Detailed, fact-checked plan
+- ✅ Real Aditya-L1 data downloaded and analyzed (14 SoLEXS + 16 HEL1OS days)
+- ✅ GOES ground-truth data downloaded (2024-2026, 1-min flux + 45k flare catalog)
+- ✅ Assumptions revised against empirical evidence (see ASSUMPTIONS.md)
 - ⬜ Implementation — not started yet
 
 ---

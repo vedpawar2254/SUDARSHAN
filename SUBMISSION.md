@@ -85,6 +85,24 @@ Additionally: we are the only team that has empirically measured and documented 
 
 ## Slide 5: Process Flow Diagram
 
+> **Gemini Image Prompt:** Create a clean, professional process flow diagram for a solar flare detection pipeline called SUDARSHAN. Use a dark navy/space-themed background with white text and colored accent boxes. The flow goes top-to-bottom with these stages connected by arrows:
+>
+> **Top row (Data Sources):** Two rounded boxes side by side: "SoLEXS SDD2 (Soft X-ray, 2-22 keV)" in warm orange, and "HEL1OS CdTe + CZT (Hard X-ray, 5-150 keV)" in electric blue. Both have a shared source label above them: "Aditya-L1 Spacecraft at L1 Point".
+>
+> **Second row (Preprocessing):** Under SoLEXS, two parallel boxes: "Light Curve (1-sec counts)" and "Spectra (340 channels/sec)". Under HEL1OS, two parallel boxes: "CdTe 5-20 keV" and "CZT 40-60 keV". Between SoLEXS boxes, a small label "Rolling P5 Background Estimation (1-hour window)".
+>
+> **Third row (Detection — 4 parallel detectors):** Four boxes in a horizontal row with distinct colors: (1) "SoLEXS Threshold — 2.5x background, 10s sustained" in orange, (2) "Spectral Hardening — high/low channel ratio rise" in yellow, (3) "CdTe Onset — 75 cps, M-class trigger" in light blue, (4) "CZT Onset — 50 cps, X-class trigger" in deep blue.
+>
+> **Fourth row (Fusion):** All four detectors feed into a single large box: "Hybrid Decision Engine". Inside this box show the logic: "C-class: SoLEXS alone | M-class: SoLEXS + confirmation | X-class: SoLEXS + confirmation". Next to it, a smaller box labeled "AND-Gate (FAR reduction)".
+>
+> **Fifth row (Classification):** A box labeled "Background-Subtracted Classification" with three colored sub-sections: "C: net 30-419" in green, "M: net 420-5999" in yellow, "X: net 6000+" in red.
+>
+> **Sixth row (Post-processing):** "Adaptive Decay-Aware Merge" box — with a note: "weaker peak = merge (decay tail), stronger peak = keep (new event)".
+>
+> **Bottom row (Output):** Two output boxes: "Master Flare Catalog (CSV)" and "Streamlit Dashboard" with alert icons showing WATCH → WARNING → ALERT progression.
+>
+> Style: clean vector look suitable for a professional presentation slide. No 3D effects. Use subtle glow/gradient on the boxes. Include small icons — sun icon at top, satellite icon, alert bell at bottom. Make it visually impressive but readable. 1920x1080 aspect ratio.
+
 ```
                          Aditya-L1 Raw Data
                         /                    \
@@ -171,6 +189,31 @@ Additionally: we are the only team that has empirically measured and documented 
 ---
 
 ## Slide 6: Wireframes (Dashboard)
+
+> **Gemini Image Prompt:** Create a high-fidelity UI wireframe/mockup of a solar flare monitoring dashboard called "SUDARSHAN". Dark theme (dark gray/navy background, like a mission control screen). The layout is a single-page dashboard, 1920x1080 aspect ratio, with these sections:
+>
+> **Top bar:** Title "SUDARSHAN — Solar Flare Monitor" on the left. On the right, a date selector showing "2024-10-03" and a small status indicator "LIVE" with a green dot.
+>
+> **Main area — two time-series charts stacked vertically (taking ~60% of the screen):**
+>
+> **Chart 1 (top, ~30% height):** Title "SoLEXS SDD2 (2-22 keV)". A line chart showing X-ray counts over 24 hours (x-axis: 00:00 to 24:00, y-axis: counts/sec on log scale). Show a relatively flat baseline around 100-300 counts with several moderate bumps (M-class flares) and one massive spike around 12:18 reaching ~22,000 counts (the X8.9 flare). The baseline should be slightly elevated from 8:00-16:00. Use a warm orange line color. Show a thin dashed gray line for the rolling background level. At the X8.9 spike, show a vertical dashed red line labeled "ALERT" and a vertical dashed yellow line 15 minutes before it labeled "WATCH". Add colored dots on matched flare peaks: green for C-class, yellow for M-class, red for X-class.
+>
+> **Chart 2 (below, ~30% height):** Title "HEL1OS CdTe 5-20 keV (blue) + CZT 40-60 keV (red)". Two overlaid line charts. CdTe in electric blue, CZT in red. Mostly flat/zero with sparse data points (duty cycle effect), but a huge spike at the same time as the X8.9 in chart 1. CdTe reaches ~46,000 cps, CZT reaches ~2,700 cps. The CZT spike should visibly peak about 2 minutes BEFORE the CdTe spike (show this with a small annotation arrow "CZT leads by 2.3 min").
+>
+> **Right sidebar (~30% width):**
+>
+> **Alert Panel (top right):** A vertical timeline of alerts with colored badges. Show 4 entries:
+> - 12:02 — yellow badge "WATCH" — "Spectral hardening detected"
+> - 12:13 — orange badge "WARNING" — "CZT 40-60 keV onset (2759 cps)"
+> - 12:13 — orange badge "WARNING" — "CdTe confirmed (46736 cps)"
+> - 12:17 — red badge "ALERT" — "X-class confirmed (net 22302)"
+> Below the last entry, a highlighted box: "Lead time: 15.2 min"
+>
+> **Bottom section (~25% height):** A table titled "Flare Catalog — Oct 3, 2024" with columns: #, Time, Class, Net Counts, Confidence, Lead (min), CdTe, CZT. Show 8-9 rows of data. The X8.9 row should be highlighted in red. Confidence column shows "MED" or "HIGH" badges. CdTe and CZT columns show checkmark or dash icons.
+>
+> **Bottom bar:** Small metrics strip showing: "TPR: 80.0%" | "FAR: 0.0%" | "Flares detected: 8/10" | "Avg lead: 8.0 min"
+>
+> Style: Modern dark UI like Grafana or a NASA mission control dashboard. Subtle grid lines on charts. Clean sans-serif font (Inter or similar). No rounded cartoon elements — this should look like professional operational software. Suitable for embedding in a presentation slide.
 
 ```
 +------------------------------------------------------------------+

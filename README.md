@@ -1,4 +1,4 @@
-# SUDARSHAN 🌞🔥
+# SUDARSHAN
 
 **S**oft-and-hard X-ray **U**nified **D**etection, **A**nticipation & **R**eal-time **S**olar-flare **H**ardness-**A**ware **N**owcasting
 
